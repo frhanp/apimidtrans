@@ -8,17 +8,22 @@ use App\Models\Transaction;
 
 class MidtransController extends Controller
 {
-   /**
+    /**
      * Membuat transaksi dan mendapatkan Snap Token.
      */
     public function createTransaction(Request $request)
     {
-        // Set konfigurasi
+        // --- BAGIAN KONFIGURASI LENGKAP ---
         \Midtrans\Config::$serverKey = config('midtrans.server_key');
-        // ... (konfigurasi lainnya)
+        \Midtrans\Config::$isProduction = config('midtrans.is_production');
+        \Midtrans\Config::$isSanitized = config('midtrans.is_sanitized');
+        \Midtrans\Config::$is3ds = config('midtrans.is_3ds');
+        // ------------------------------------
 
+        // Buat data transaksi
         $orderId = 'ORDER-' . uniqid();
-        $grossAmount = 15000; // Contoh jumlah
+        // Samakan jumlah dengan yang ada di view
+        $grossAmount = 10000;
         $customerDetails = [
             'first_name' => 'Budi',
             'last_name' => 'Pratama',
@@ -34,11 +39,11 @@ class MidtransController extends Controller
             ],
             'customer_details' => $customerDetails,
         ];
-        
+
         // Dapatkan Snap Token
         $snapToken = \Midtrans\Snap::getSnapToken($params);
 
-        // -- SIMPAN TRANSAKSI KE DATABASE --
+        // Simpan transaksi ke database
         Transaction::create([
             'order_id' => $orderId,
             'gross_amount' => $grossAmount,
@@ -65,7 +70,7 @@ class MidtransController extends Controller
         $orderId = $notificationPayload['order_id'] ?? null;
         $statusCode = $notificationPayload['status_code'] ?? null;
         $grossAmount = $notificationPayload['gross_amount'] ?? null;
-        
+
         // Buat hash signature
         $stringToHash = $orderId . $statusCode . $grossAmount . $serverKey;
         $calculatedSignature = hash('sha512', $stringToHash);
@@ -75,7 +80,7 @@ class MidtransController extends Controller
             Log::error('Webhook Error: Invalid signature.');
             return response()->json(['message' => 'Invalid signature'], 403);
         }
-        
+
         // ==================================================
         // 2. JIKA SIGNATURE VALID, LANJUTKAN PROSES UPDATE
         // ==================================================
@@ -87,7 +92,7 @@ class MidtransController extends Controller
             Log::error("Webhook Error: Transaksi dengan order_id {$orderId} tidak ditemukan.");
             return response()->json(['message' => 'Transaction not found'], 404);
         }
-        
+
         // Update status transaksi
         $transactionStatus = $notificationPayload['transaction_status'];
         $fraudStatus = $notificationPayload['fraud_status'] ?? null;
@@ -96,14 +101,12 @@ class MidtransController extends Controller
             if ($fraudStatus == 'accept') {
                 $transaction->update(['status' => 'paid']);
             }
-        } 
-        else if ($transactionStatus == 'settlement') {
+        } else if ($transactionStatus == 'settlement') {
             $transaction->update([
                 'status' => 'paid',
                 'payment_type' => $notificationPayload['payment_type']
             ]);
-        } 
-        else if (in_array($transactionStatus, ['expire', 'deny', 'cancel'])) {
+        } else if (in_array($transactionStatus, ['expire', 'deny', 'cancel'])) {
             $transaction->update(['status' => $transactionStatus]);
         }
 
@@ -128,5 +131,4 @@ class MidtransController extends Controller
     /**
      * Membuat transaksi dan mendapatkan Snap Token.
      */
-    
 }
