@@ -21,3 +21,5 @@ Route::get('/pay', [MidtransController::class, 'showPaymentPage']);
 
 // Route untuk membuat transaksi (dipanggil oleh Javascript)
 Route::post('/create-transaction', [MidtransController::class, 'createTransaction']);
+
+Route::get('/transactions', [MidtransController::class, 'showTransactions']);
