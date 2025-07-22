@@ -95,4 +95,51 @@ class MidtransController extends Controller
         // Penting agar Midtrans tahu notifikasi sudah diterima
         return response()->json(['message' => 'Webhook successfully processed'], 200);
     }
+
+    /**
+     * Menampilkan halaman pembayaran.
+     */
+    public function showPaymentPage()
+    {
+        // Cukup kembalikan view-nya saja
+        return view('payment');
+    }
+
+    /**
+     * Membuat transaksi dan mendapatkan Snap Token.
+     */
+    public function createTransaction(Request $request)
+    {
+        // 1. Set konfigurasi Midtrans
+        \Midtrans\Config::$serverKey = config('midtrans.server_key');
+        \Midtrans\Config::$isProduction = config('midtrans.is_production');
+        \Midtrans\Config::$isSanitized = true;
+        \Midtrans\Config::$is3ds = true;
+
+        // 2. Buat parameter untuk transaksi
+        $params = [
+            'transaction_details' => [
+                'order_id' => 'ORDER-' . uniqid(), // Buat ID order yang unik
+                'gross_amount' => 10000, // Jumlah pembayaran
+            ],
+            'customer_details' => [
+                'first_name' => 'Budi',
+                'last_name' => 'Pratama',
+                'email' => 'budi.pratama@example.com',
+                'phone' => '081234567890',
+            ],
+        ];
+
+        try {
+            // 3. Dapatkan Snap Token
+            $snapToken = \Midtrans\Snap::getSnapToken($params);
+
+            // 4. Kirim token ke view
+            return response()->json(['snap_token' => $snapToken]);
+        } catch (\Exception $e) {
+            // Tangani jika ada error
+            Log::error('Midtrans Snap Error: ' . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
 }

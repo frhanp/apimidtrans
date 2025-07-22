@@ -15,3 +15,9 @@ Route::get('/test', function () {
         'message' => 'Halo! Endpoint Anda berhasil diakses!'
     ]);
 });
+
+// Route untuk menampilkan halaman pembayaran
+Route::get('/pay', [MidtransController::class, 'showPaymentPage']);
+
+// Route untuk membuat transaksi (dipanggil oleh Javascript)
+Route::post('/create-transaction', [MidtransController::class, 'createTransaction']);
