@@ -1,7 +1,17 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\MidtransController;
 Route::get('/', function () {
     return view('welcome');
+    
+});
+Route::post('/midtrans/webhook', [MidtransController::class, 'handleWebhook']);
+
+// TAMBAHKAN ROUTE INI UNTUK TESTING
+Route::get('/test', function () {
+    return response()->json([
+        'status' => 'OK',
+        'message' => 'Halo! Endpoint Anda berhasil diakses!'
+    ]);
 });
