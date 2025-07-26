@@ -61,9 +61,8 @@ class MidtransController extends Controller
     public function handleWebhook(Request $request)
     {
         // ==================================================
-        // 1. LOGIKA VALIDASI SIGNATURE KEY (DI SINI)
+        // 1. LOGIKA VALIDASI SIGNATURE KEY
         // ==================================================
-
         $notificationPayload = $request->all();
         $serverKey = config('midtrans.server_key');
 
@@ -71,24 +70,28 @@ class MidtransController extends Controller
         $statusCode = $notificationPayload['status_code'] ?? null;
         $grossAmount = $notificationPayload['gross_amount'] ?? null;
 
-        // Buat hash signature
         $stringToHash = $orderId . $statusCode . $grossAmount . $serverKey;
         $calculatedSignature = hash('sha512', $stringToHash);
 
-        // Validasi signature
         if (empty($notificationPayload['signature_key']) || $calculatedSignature !== $notificationPayload['signature_key']) {
             Log::error('Webhook Error: Invalid signature.');
             return response()->json(['message' => 'Invalid signature'], 403);
         }
 
         // ==================================================
-        // 2. JIKA SIGNATURE VALID, LANJUTKAN PROSES UPDATE
+        // 2. PROSES UPDATE SETELAH SIGNATURE VALID
         // ==================================================
-
-        // Cari transaksi di database
-        $transaction = Transaction::where('order_id', $orderId)->first();
+        $transaction = \App\Models\Transaction::where('order_id', $orderId)->first();
 
         if (!$transaction) {
+            // --- PERUBAHAN DI SINI ---
+            // Jika ini notifikasi tes dari dashboard, abaikan & kirim OK.
+            if (str_starts_with($orderId, 'payment_notif_test_')) {
+                return response()->json(['message' => 'Test notification received and ignored.'], 200);
+            }
+            // --- AKHIR PERUBAHAN ---
+
+            // Jika transaksi asli yang tidak ditemukan, baru catat sebagai error.
             Log::error("Webhook Error: Transaksi dengan order_id {$orderId} tidak ditemukan.");
             return response()->json(['message' => 'Transaction not found'], 404);
         }
